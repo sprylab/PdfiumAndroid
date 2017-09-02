@@ -5,12 +5,12 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := aospPdfium
 
 ARCH_PATH = $(TARGET_ARCH_ABI)
-ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
-    ARCH_PATH = armeabi
+ifeq ($(TARGET_ARCH_ABI), armeabi)
+    ARCH_PATH = armeabi-v7a
 endif
 
-ifeq ($(TARGET_ARCH_ABI), arm64-v8a)
-    ARCH_PATH = arm64
+ifeq ($(TARGET_ARCH_ABI), arm64)
+    ARCH_PATH = arm64-v8a
 endif
 
 LOCAL_SRC_FILES := $(LOCAL_PATH)/lib/$(ARCH_PATH)/libmodpdfium.so

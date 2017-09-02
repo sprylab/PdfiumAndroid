@@ -39,24 +39,24 @@ public class PdfiumCore {
 
     private native void nativeClosePages(long[] pagesPtr);
 
-    private native int nativeGetPageWidthPixel(long pagePtr, int dpi);
+    private native double nativeGetPageWidthPixel(long pagePtr, int dpi);
 
-    private native int nativeGetPageHeightPixel(long pagePtr, int dpi);
+    private native double nativeGetPageHeightPixel(long pagePtr, int dpi);
 
-    private native int nativeGetPageWidthPoint(long pagePtr);
+    private native double nativeGetPageWidthPoint(long pagePtr);
 
-    private native int nativeGetPageHeightPoint(long pagePtr);
+    private native double nativeGetPageHeightPoint(long pagePtr);
 
     //private native long nativeGetNativeWindow(Surface surface);
     //private native void nativeRenderPage(long pagePtr, long nativeWindowPtr);
-    private native void nativeRenderPage(long pagePtr, Surface surface, int dpi,
+    private native void nativeRenderPage(long pagePtr, Surface surface,
                                          int startX, int startY,
-                                         int drawSizeHor, int drawSizeVer,
+                                         int drawSizeHor, int drawSizeVer, int bgColor,
                                          boolean renderAnnot);
 
-    private native void nativeRenderPageBitmap(long pagePtr, Bitmap bitmap, int dpi,
+    private native void nativeRenderPageBitmap(long pagePtr, Bitmap bitmap,
                                                int startX, int startY,
-                                               int drawSizeHor, int drawSizeVer,
+                                               int drawSizeHor, int drawSizeVer, int bgColor,
                                                boolean renderAnnot);
 
     private native String nativeGetDocumentMetaText(long docPtr, String tag);
@@ -156,7 +156,7 @@ public class PdfiumCore {
         }
     }
 
-    public int getPageWidth(PdfDocument doc, int index) {
+    public double getPageWidth(PdfDocument doc, int index) {
         synchronized (lock) {
             Long pagePtr;
             if ((pagePtr = doc.mNativePagesPtr.get(index)) != null) {
@@ -166,7 +166,7 @@ public class PdfiumCore {
         }
     }
 
-    public int getPageHeight(PdfDocument doc, int index) {
+    public double getPageHeight(PdfDocument doc, int index) {
         synchronized (lock) {
             Long pagePtr;
             if ((pagePtr = doc.mNativePagesPtr.get(index)) != null) {
@@ -176,7 +176,7 @@ public class PdfiumCore {
         }
     }
 
-    public int getPageWidthPoint(PdfDocument doc, int index) {
+    public double getPageWidthPoint(PdfDocument doc, int index) {
         synchronized (lock) {
             Long pagePtr;
             if ((pagePtr = doc.mNativePagesPtr.get(index)) != null) {
@@ -186,7 +186,7 @@ public class PdfiumCore {
         }
     }
 
-    public int getPageHeightPoint(PdfDocument doc, int index) {
+    public double getPageHeightPoint(PdfDocument doc, int index) {
         synchronized (lock) {
             Long pagePtr;
             if ((pagePtr = doc.mNativePagesPtr.get(index)) != null) {
@@ -197,18 +197,18 @@ public class PdfiumCore {
     }
 
     public void renderPage(PdfDocument doc, Surface surface, int pageIndex,
-                           int startX, int startY, int drawSizeX, int drawSizeY) {
-        renderPage(doc, surface, pageIndex, startX, startY, drawSizeX, drawSizeY, false);
+                           int startX, int startY, int drawSizeX, int drawSizeY, int bgColor) {
+        renderPage(doc, surface, pageIndex, startX, startY, drawSizeX, drawSizeY, bgColor, false);
     }
 
     public void renderPage(PdfDocument doc, Surface surface, int pageIndex,
-                           int startX, int startY, int drawSizeX, int drawSizeY,
+                           int startX, int startY, int drawSizeX, int drawSizeY, int bgColor,
                            boolean renderAnnot) {
         synchronized (lock) {
             try {
                 //nativeRenderPage(doc.mNativePagesPtr.get(pageIndex), surface, mCurrentDpi);
-                nativeRenderPage(doc.mNativePagesPtr.get(pageIndex), surface, mCurrentDpi,
-                        startX, startY, drawSizeX, drawSizeY, renderAnnot);
+                nativeRenderPage(doc.mNativePagesPtr.get(pageIndex), surface,
+                    startX, startY, drawSizeX, drawSizeY, bgColor, renderAnnot);
             } catch (NullPointerException e) {
                 Log.e(TAG, "mContext may be null");
                 e.printStackTrace();
@@ -220,17 +220,17 @@ public class PdfiumCore {
     }
 
     public void renderPageBitmap(PdfDocument doc, Bitmap bitmap, int pageIndex,
-                                 int startX, int startY, int drawSizeX, int drawSizeY) {
-        renderPageBitmap(doc, bitmap, pageIndex, startX, startY, drawSizeX, drawSizeY, false);
+                                 int startX, int startY, int drawSizeX, int drawSizeY, int bgColor) {
+        renderPageBitmap(doc, bitmap, pageIndex, startX, startY, drawSizeX, drawSizeY, bgColor, false);
     }
 
     public void renderPageBitmap(PdfDocument doc, Bitmap bitmap, int pageIndex,
-                                 int startX, int startY, int drawSizeX, int drawSizeY,
+                                 int startX, int startY, int drawSizeX, int drawSizeY, int bgColor,
                                  boolean renderAnnot) {
         synchronized (lock) {
             try {
-                nativeRenderPageBitmap(doc.mNativePagesPtr.get(pageIndex), bitmap, mCurrentDpi,
-                        startX, startY, drawSizeX, drawSizeY, renderAnnot);
+                nativeRenderPageBitmap(doc.mNativePagesPtr.get(pageIndex), bitmap,
+                    startX, startY, drawSizeX, drawSizeY, bgColor, renderAnnot);
             } catch (NullPointerException e) {
                 Log.e(TAG, "mContext may be null");
                 e.printStackTrace();

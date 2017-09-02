@@ -1,10 +1,11 @@
 buildscript {
     repositories {
+        google()
         jcenter()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.2'
+        classpath 'com.android.tools.build:gradle:3.0.0-beta4'
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
         classpath 'com.github.dcendents:android-maven-gradle-plugin:1.5'
     }
@@ -37,12 +38,12 @@ ext {
 }
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.3"
+    compileSdkVersion 26
+    buildToolsVersion "26.0.1"
 
     defaultConfig {
-        minSdkVersion 9
-        targetSdkVersion 25
+        minSdkVersion 14
+        targetSdkVersion 26
         versionCode 1
         versionName "1.7.0"
     }
@@ -56,14 +57,35 @@ android {
     sourceSets{
         main {
             jni.srcDirs = []
-            jniLibs.srcDir 'src/main/libs'
+//            jniLibs.srcDir 'src/main/jni/lib'
+        }
+    }
+    defaultConfig {
+        ndk {
+            moduleName "pdfium-android"
+            abiFilters "armeabi-v7a", "arm64-v8a", "mips", "x86", "x86_64"
+
+        }
+        externalNativeBuild {
+            ndkBuild {
+                arguments "APP_STL:=gnustl_static"
+                cppFlags "-fexceptions"
+            }
+        }
+    }
+    externalNativeBuild {
+        ndkBuild {
+            path 'src/main/jni/Android.mk'
         }
     }
 }
 
+repositories {
+    google()
+}
+
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:support-v4:25.3.1'
+    compile 'com.android.support:support-core-utils:26.0.2'
 }
 
 apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/installv1.gradle'

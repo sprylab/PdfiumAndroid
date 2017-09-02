@@ -160,6 +160,29 @@ void rgbBitmapTo565(void *source, int sourceStride, void *dest, AndroidBitmapInf
     }
 }
 
+struct rgba {
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+    uint8_t alpha;
+};
+
+void premultiplyAlpha(void* source, AndroidBitmapInfo* info){
+    rgba* srcLine;
+    int y, x;
+    for (y = 0; y < info->height; y++) {
+        srcLine = (rgba*) source;
+        for (x = 0; x < info->width; x++) {
+            rgba color = srcLine[x];
+            double a = color.alpha / 255.0;
+            srcLine[x].red = (uint8_t) (color.red * a);
+            srcLine[x].green = (uint8_t) (color.green * a);
+            srcLine[x].blue = (uint8_t) (color.blue * a);
+        }
+        source = (char*) source + info->stride;
+    }
+}
+
 extern "C" { //For JNI support
 
 static int getBlock(void* param, unsigned long position, unsigned char* outBuffer,
@@ -333,22 +356,22 @@ JNI_FUNC(void, PdfiumCore, nativeClosePages)(JNI_ARGS, jlongArray pagesPtr){
     for(i = 0; i < length; i++){ closePageInternal(pages[i]); }
 }
 
-JNI_FUNC(jint, PdfiumCore, nativeGetPageWidthPixel)(JNI_ARGS, jlong pagePtr, jint dpi){
+JNI_FUNC(jdouble, PdfiumCore, nativeGetPageWidthPixel)(JNI_ARGS, jlong pagePtr, jint dpi){
     FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
-    return (jint)(FPDF_GetPageWidth(page) * dpi / 72);
+    return (jdouble)(FPDF_GetPageWidth(page) * dpi / 72);
 }
-JNI_FUNC(jint, PdfiumCore, nativeGetPageHeightPixel)(JNI_ARGS, jlong pagePtr, jint dpi){
+JNI_FUNC(jdouble, PdfiumCore, nativeGetPageHeightPixel)(JNI_ARGS, jlong pagePtr, jint dpi){
     FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
-    return (jint)(FPDF_GetPageHeight(page) * dpi / 72);
+    return (jdouble)(FPDF_GetPageHeight(page) * dpi / 72);
 }
 
-JNI_FUNC(jint, PdfiumCore, nativeGetPageWidthPoint)(JNI_ARGS, jlong pagePtr, jint dpi){
+JNI_FUNC(jdouble, PdfiumCore, nativeGetPageWidthPoint)(JNI_ARGS, jlong pagePtr, jint dpi){
     FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
-    return (jint)FPDF_GetPageWidth(page);
+    return (jdouble)FPDF_GetPageWidth(page);
 }
-JNI_FUNC(jint, PdfiumCore, nativeGetPageHeightPoint)(JNI_ARGS, jlong pagePtr, jint dpi){
+JNI_FUNC(jdouble, PdfiumCore, nativeGetPageHeightPoint)(JNI_ARGS, jlong pagePtr, jint dpi){
     FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
-    return (jint)FPDF_GetPageHeight(page);
+    return (jdouble)FPDF_GetPageHeight(page);
 }
 
 static void renderPageInternal( FPDF_PAGE page,
@@ -371,7 +394,7 @@ static void renderPageInternal( FPDF_PAGE page,
 
     if(drawSizeHor < canvasHorSize || drawSizeVer < canvasVerSize){
         FPDFBitmap_FillRect( pdfBitmap, 0, 0, canvasHorSize, canvasVerSize,
-                             0x848484FF); //Gray
+                             0xFFFFFF00); // transparent
     }
 
     int baseHorSize = (canvasHorSize < drawSizeHor)? canvasHorSize : drawSizeHor;
@@ -385,7 +408,7 @@ static void renderPageInternal( FPDF_PAGE page,
     }
 
     FPDFBitmap_FillRect( pdfBitmap, baseX, baseY, baseHorSize, baseVerSize,
-                         0xFFFFFFFF); //White
+                         0xFFFFFF00); // transparent
 
     FPDF_RenderPageBitmap( pdfBitmap, page,
                            startX, startY,
@@ -394,7 +417,7 @@ static void renderPageInternal( FPDF_PAGE page,
 }
 
 JNI_FUNC(void, PdfiumCore, nativeRenderPage)(JNI_ARGS, jlong pagePtr, jobject objSurface,
-                                             jint dpi, jint startX, jint startY,
+                                             jint startX, jint startY,
                                              jint drawSizeHor, jint drawSizeVer,
                                              jboolean renderAnnot){
     ANativeWindow *nativeWindow = ANativeWindow_fromSurface(env, objSurface);
@@ -435,9 +458,9 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPage)(JNI_ARGS, jlong pagePtr, jobject ob
 }
 
 JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobject bitmap,
-                                             jint dpi, jint startX, jint startY,
-                                             jint drawSizeHor, jint drawSizeVer,
-                                             jboolean renderAnnot){
+                                                   jint startX, jint startY,
+                                                   jint drawSizeHor, jint drawSizeVer, jint bgColor,
+                                                   jboolean renderAnnot){
 
     FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
 
@@ -480,20 +503,8 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobj
         format = FPDFBitmap_BGRA;
     }
 
-    FPDF_BITMAP pdfBitmap = FPDFBitmap_CreateEx( canvasHorSize, canvasVerSize,
-                                                     format, tmp, sourceStride);
-
-    /*LOGD("Start X: %d", startX);
-    LOGD("Start Y: %d", startY);
-    LOGD("Canvas Hor: %d", canvasHorSize);
-    LOGD("Canvas Ver: %d", canvasVerSize);
-    LOGD("Draw Hor: %d", drawSizeHor);
-    LOGD("Draw Ver: %d", drawSizeVer);*/
-
-    if(drawSizeHor < canvasHorSize || drawSizeVer < canvasVerSize){
-        FPDFBitmap_FillRect( pdfBitmap, 0, 0, canvasHorSize, canvasVerSize,
-                             0x848484FF); //Gray
-    }
+    FPDF_BITMAP pdfBitmap = FPDFBitmap_CreateEx(canvasHorSize, canvasVerSize, format, tmp,
+                                                sourceStride);
 
     int baseHorSize = (canvasHorSize < drawSizeHor)? canvasHorSize : (int)drawSizeHor;
     int baseVerSize = (canvasVerSize < drawSizeVer)? canvasVerSize : (int)drawSizeVer;
@@ -505,17 +516,26 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobj
     	flags |= FPDF_ANNOT;
     }
 
-    FPDFBitmap_FillRect( pdfBitmap, baseX, baseY, baseHorSize, baseVerSize,
-                         0xFFFFFFFF); //White
+    // argb to abgr
+    unsigned int color = (unsigned int) bgColor;
+    unsigned int a = (color & 0xFF000000) >> 24;
+    unsigned int r = (color & 0x00FF0000) >> 16;
+    unsigned int g = (color & 0x0000FF00) >> 8;
+    unsigned int b = color & 0x000000FF;
+    FPDF_DWORD clearColor = a << 24 | b << 16 | g << 8 | r;
 
-    FPDF_RenderPageBitmap( pdfBitmap, page,
-                           startX, startY,
-                           (int)drawSizeHor, (int)drawSizeVer,
-                           0, flags );
+    FPDFBitmap_FillRect(pdfBitmap, baseX, baseY, baseHorSize, baseVerSize, (FPDF_DWORD) clearColor);
+
+    FPDF_RenderPageBitmap(pdfBitmap, page, startX, startY, (int) drawSizeHor, (int) drawSizeVer, 0,
+                          flags);
 
     if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
         rgbBitmapTo565(tmp, sourceStride, addr, &info);
         free(tmp);
+    }
+
+    if (a < 255) {
+        premultiplyAlpha((uint32_t*) addr, &info);
     }
 
     AndroidBitmap_unlockPixels(env, bitmap);
